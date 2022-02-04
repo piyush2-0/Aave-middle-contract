@@ -9,6 +9,7 @@
     "hardhat": "^2.8.3"
   },
   "dependencies": {
-    "@aave/protocol-js": "^4.3.0"
+    "@aave/protocol-js": "^4.3.0",
+    "@openzeppelin/contracts": "^4.4.2"
   }
 }
