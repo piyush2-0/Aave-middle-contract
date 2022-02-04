@@ -1,7 +1,7 @@
-Aave-middle-contract
+####Aave-middle-contract
 A smart contract that acts as a middle layer and allows user to interact with the Aave protocol
 
-TODO
+#####TODO
 Enable borrowing ERC20 tokens, using -
 Ether
 Other ECR20 tokens
