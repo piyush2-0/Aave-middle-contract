@@ -51,7 +51,7 @@ contract AaveMiddleContract {
         address _withdrawToken
     ) external _ownerOnly {
         uint256 contractBalance = IERC20(_reserve).balanceOf(address(this));
-        require(contractBalance < _amount, "NOT ENOUGH cTOKENS");
+        require(contractBalance < _amount, "NOT ENOUGH aTOKENS");
         uint256 redeemResult = lendingPool.withdraw(
             _withdrawToken,
             _amount,
@@ -116,7 +116,7 @@ contract AaveMiddleContract {
     function withdrawEth(address _aEth, uint256 _amount) external _ownerOnly {
         uint256 contractBalance = IERC20(_aEth).balanceOf(address(this));
 
-        require(contractBalance < _amount, "NOT ENOUGH cTOKENS");
+        require(contractBalance < _amount, "NOT ENOUGH aTOKENS");
 
         address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
         uint256 redeemResult = lendingPool.withdraw(
