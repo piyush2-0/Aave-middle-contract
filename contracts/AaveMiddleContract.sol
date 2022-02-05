@@ -13,10 +13,16 @@ contract AaveMiddleContract {
         LendingPoolAddressesProvider(
             address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8)
         ); // mainnet address
-    LendingPool lendingPool = LendingPool(provider.getLendingPool());
+    LendingPool lendingPool;
 
     constructor() {
         owner = msg.sender; // sets contract owner
+        lendingPool = LendingPool(provider.getLendingPool());
+    }
+
+    modifier _ownerOnly() {
+        require(msg.sender == owner);
+        _;
     }
 
     // Function to receive Ether. msg.data must be empty
@@ -26,30 +32,35 @@ contract AaveMiddleContract {
         address _reserve,
         uint256 _amount,
         uint16 _referralCode
-    ) external {
+    ) external _ownerOnly {
+
+        IERC20(_reserve).transferFrom(msg.sender,address(this), _amount);
+
         uint256 contractBalance = IERC20(_reserve).balanceOf(address(this));
         console.log(contractBalance);
         IERC20(_reserve).approve(provider.getLendingPoolCore(), _amount);
 
         lendingPool.deposit(_reserve, _amount, address(this), _referralCode);
-        contractBalance = IERC20(_reserve).balanceOf(address(this));
-        console.log(contractBalance);
+        uint256 newContractBalance = IERC20(_reserve).balanceOf(address(this));
+        require((newContractBalance - contractBalance ) != _amount ,"TOKEN DEPOSIT FAILED" );
     }
 
     function withdrawERC20(
         address _reserve,
         uint256 _amount,
         address _withdrawToken
-    ) external {
+    ) external _ownerOnly {
         uint256 contractBalance = IERC20(_reserve).balanceOf(address(this));
-        if (contractBalance >= _amount) {
-            lendingPool.withdraw(_withdrawToken, _amount, address(this));
-            contractBalance = IERC20(_withdrawToken).balanceOf(address(this));
-            console.log(contractBalance);
-            IERC20(_withdrawToken).transfer(owner, _amount);
-        } else {
-            console.log("Not enough Balance");
-        }
+        require(contractBalance < _amount, "NOT ENOUGH cTOKENS");
+        uint256 redeemResult = lendingPool.withdraw(
+            _withdrawToken,
+            _amount,
+            address(this)
+        );
+        contractBalance = IERC20(_withdrawToken).balanceOf(address(this));
+        console.log(contractBalance);
+        require(redeemResult == 0, "ERROR WHILE REDEEMING");
+        IERC20(_withdrawToken).transfer(owner, _amount);
     }
 
     function borrowERC20(
@@ -58,7 +69,8 @@ contract AaveMiddleContract {
         uint256 _interestRateMode,
         uint16 _referralCode,
         address _collateral
-    ) external {
+    ) external _ownerOnly {
+        uint256 contractBalance = IERC20(_reserve).balanceOf(address(this));
         lendingPool.setUserUseReserveAsCollateral(_collateral, true);
 
         lendingPool.borrow(
@@ -68,6 +80,8 @@ contract AaveMiddleContract {
             _referralCode,
             address(this)
         );
+        uint256 newContractBalance = IERC20(_reserve).balanceOf(address(this));
+        require((newContractBalance - contractBalance) == 0, "BORROW FAILED");
         IERC20(_reserve).transfer(owner, _amount);
     }
 
@@ -75,14 +89,18 @@ contract AaveMiddleContract {
         address _reserve,
         uint256 _amount,
         uint256 _rateMode
-    ) external returns (uint256) {
+    ) external _ownerOnly  {
         address contractAddress = address(this);
+
+        IERC20(_reserve).transferFrom(msg.sender,address(this), _amount);
+
         IERC20(_reserve).approve(provider.getLendingPoolCore(), _amount);
 
-        return lendingPool.repay(_reserve, _amount, _rateMode, contractAddress);
+        uint256 repayAmount = lendingPool.repay(_reserve, _amount, _rateMode, contractAddress);
+        require(repayAmount == 0, "REPAY FAILED");
     }
 
-    function depositEth(uint16 _referralCode) external payable {
+    function depositEth(uint16 _referralCode) external payable _ownerOnly {
         address _reserve = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
         lendingPool.deposit{value: msg.value}(
             _reserve,
@@ -95,19 +113,22 @@ contract AaveMiddleContract {
         console.log(contractBalance);
     }
 
-    function withdrawEth(address _aEth, uint256 _amount) external {
+    function withdrawEth(address _aEth, uint256 _amount) external _ownerOnly {
         uint256 contractBalance = IERC20(_aEth).balanceOf(address(this));
-        if (contractBalance >= _amount) {
-            address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-            uint256 redeemResult = lendingPool.withdraw(
-                Eth,
-                _amount,
-                address(this)
-            );
-            console.log(redeemResult);
-            (bool success, ) = owner.call{value: address(this).balance}("");
-            require(success, "FAILURE, ETHER NOT SENT");
-        }
+
+        require(contractBalance < _amount, "NOT ENOUGH cTOKENS");
+
+        address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+        uint256 redeemResult = lendingPool.withdraw(
+            Eth,
+            _amount,
+            address(this)
+        );
+        require(redeemResult == 0, "ERROR WHILE REDEEMING");
+        console.log(redeemResult);
+        (bool success, ) = owner.call{value: address(this).balance}("");
+
+        require(success, "FAILURE IN SENDING ETHER TO USER");
     }
 
     function borrowEth(
@@ -115,8 +136,14 @@ contract AaveMiddleContract {
         uint256 _interestRateMode,
         uint16 _referralCode,
         address _collateral
-    ) external {
+    ) external _ownerOnly {
+        require(
+            IERC20(_collateral).balanceOf(address(this)) > 0,
+            "DEPOSIT TOKENS FIRST"
+        );
+
         lendingPool.setUserUseReserveAsCollateral(_collateral, true);
+
         address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
         lendingPool.borrow(
             Eth,
@@ -129,10 +156,19 @@ contract AaveMiddleContract {
         require(success, "FAILURE, ETHER NOT SENT");
     }
 
-    function repayEth(uint256 _amount, uint256 _rateMode) external payable {
+    function repayEth(uint256 _rateMode) external payable _ownerOnly {
         address contractAddress = address(this);
         address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-        lendingPool.repay(Eth, _amount, _rateMode, contractAddress);
+        uint256 totalBorrowsETH;
+        (, , totalBorrowsETH, , , , , ) = lendingPool.getUserAccountData(
+            address(this)
+        );
+
+        require(
+            msg.value <= totalBorrowsETH,
+            "REPAY AMOUNT MORE THAN BORROWED AMOUNT"
+        );
+        lendingPool.repay(Eth, msg.value, _rateMode, contractAddress);
         console.log(address(this).balance);
     }
 }
