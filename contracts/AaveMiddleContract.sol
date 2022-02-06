@@ -11,8 +11,9 @@ contract AaveMiddleContract {
 
     LendingPoolAddressesProvider provider =
         LendingPoolAddressesProvider(
-            address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8)
+            address(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5)
         ); // mainnet address
+    WETHGateway weth =  WETHGateway(address(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5));
     LendingPool lendingPool;
 
     constructor() {
@@ -101,31 +102,33 @@ contract AaveMiddleContract {
     }
 
     function depositEth(uint16 _referralCode) external payable _ownerOnly {
-        address _reserve = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-        lendingPool.deposit{value: msg.value}(
+        address _reserve = address(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
+        uint256 contractBalance = IERC20(aWEth).balanceOf(address(this));
+        weth.depositETH{value: msg.value}(
             _reserve,
-            msg.value,
             address(this),
             _referralCode
         );
-        address aEth = address(0x3a3A65aAb0dd2A17E3F1947bA16138cd37d08c04);
-        uint256 contractBalance = IERC20(aEth).balanceOf(address(this));
+        address aWEth = address(0x030bA81f1c18d280636F32af80b9AAd02Cf0854e);
+        uint256 newContractBalance = IERC20(aWEth).balanceOf(address(this));
+        require((newContractBalance - contractBalance) != msg.value, "DEPOSIT FAILED");
         console.log(contractBalance);
     }
 
-    function withdrawEth(address _aEth, uint256 _amount) external _ownerOnly {
-        uint256 contractBalance = IERC20(_aEth).balanceOf(address(this));
+    function withdrawEth(address _aWEth, uint256 _amount) external _ownerOnly {
+        uint256 contractBalance = IERC20(_aWEth).balanceOf(address(this));
 
         require(contractBalance < _amount, "NOT ENOUGH aTOKENS");
 
-        address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-        uint256 redeemResult = lendingPool.withdraw(
-            Eth,
+        address _reserve = address(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
+       weth.withdrawETH(
+            _reserve,
             _amount,
             address(this)
         );
-        require(redeemResult == 0, "ERROR WHILE REDEEMING");
-        console.log(redeemResult);
+        
+        uint256 newContractBalance = IERC20(_aWEth).balanceOf(address(this));
+        requir( (contractBalance - newContractBalance) !=_amount,"WITHDRAW FAILED");
         (bool success, ) = owner.call{value: address(this).balance}("");
 
         require(success, "FAILURE IN SENDING ETHER TO USER");
@@ -144,21 +147,22 @@ contract AaveMiddleContract {
 
         lendingPool.setUserUseReserveAsCollateral(_collateral, true);
 
-        address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
-        lendingPool.borrow(
-            Eth,
+        address _reserve = address(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
+        weth.borrowETH(
+            _reserve,
             _amount,
             _interestRateMode,
-            _referralCode,
-            address(this)
+            _referralCode
         );
+        uint256 contractBalance = address(this).balance;
+        require(contractBalance == 0 , "BORROW FAILED");
         (bool success, ) = owner.call{value: address(this).balance}("");
         require(success, "FAILURE, ETHER NOT SENT");
     }
 
     function repayEth(uint256 _rateMode) external payable _ownerOnly {
         address contractAddress = address(this);
-        address Eth = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+        address _reserve = address(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
         uint256 totalBorrowsETH;
         (, , totalBorrowsETH, , , , , ) = lendingPool.getUserAccountData(
             address(this)
@@ -168,7 +172,9 @@ contract AaveMiddleContract {
             msg.value <= totalBorrowsETH,
             "REPAY AMOUNT MORE THAN BORROWED AMOUNT"
         );
-        lendingPool.repay(Eth, msg.value, _rateMode, contractAddress);
+        weth.repayETH{value: msg.value}(_reserve, msg.value, _rateMode, contractAddress);
         console.log(address(this).balance);
     }
+}
+
 }
