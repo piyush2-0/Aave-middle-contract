@@ -148,37 +148,17 @@ interface LendingPool {
     function setUserUseReserveAsCollateral(address asset, bool useAsCollateral)
         external;
 
-    
-     function getUserAccountData(address _user)
+    function getUserAccountData(address user)
         external
         view
         returns (
-            uint256 totalLiquidityETH,
             uint256 totalCollateralETH,
-            uint256 totalBorrowsETH,
-            uint256 totalFeesETH,
+            uint256 totalDebtETH,
             uint256 availableBorrowsETH,
             uint256 currentLiquidationThreshold,
             uint256 ltv,
             uint256 healthFactor
         );
-
-    function getUserReserveData(address _reserve, address _user)
-        external
-        view
-        returns (
-            uint256 currentATokenBalance,
-            uint256 currentBorrowBalance,
-            uint256 principalBorrowBalance,
-            uint256 borrowRateMode,
-            uint256 borrowRate,
-            uint256 liquidityRate,
-            uint256 originationFee,
-            uint256 variableBorrowIndex,
-            uint256 lastUpdateTimestamp,
-            bool usageAsCollateralEnabled
-        );
-
 }
 
 interface LendingPoolAddressesProvider {
@@ -193,56 +173,73 @@ interface LendingPoolAddressesProvider {
      * @return the lending LendingPool core proxy address
      */
     function getLendingPoolCore() external view returns (address payable);
+
+    function getPriceOracle() external view returns (address);
 }
 
-
-interface  WETHGateway {
-    
+interface WETHGateway {
     /**
-   * @dev deposits WETH into the reserve, using native ETH. A corresponding amount of the overlying asset (aTokens)
-   * is minted.
-   * @param lendingPool address of the targeted underlying lending pool
-   * @param onBehalfOf address of the user who will receive the aTokens representing the deposit
-   * @param referralCode integrators are assigned a referral code and can potentially receive rewards.
-   **/
-  function depositETH(
-    address lendingPool,
-    address onBehalfOf,
-    uint16 referralCode
-  ) external payable;
-
+     * @dev deposits WETH into the reserve, using native ETH. A corresponding amount of the overlying asset (aTokens)
+     * is minted.
+     * @param lendingPool address of the targeted underlying lending pool
+     * @param onBehalfOf address of the user who will receive the aTokens representing the deposit
+     * @param referralCode integrators are assigned a referral code and can potentially receive rewards.
+     **/
+    function depositETH(
+        address lendingPool,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external payable;
 
     /**
-   * @dev withdraws the WETH _reserves of msg.sender.
-   * @param lendingPool address of the targeted underlying lending pool
-   * @param amount amount of aWETH to withdraw and receive native ETH
-   * @param to address of the user who will receive native ETH
-   */
-  function withdrawETH(
-    address lendingPool,
-    uint256 amount,
-    address to
-  ) external;
+     * @dev withdraws the WETH _reserves of msg.sender.
+     * @param lendingPool address of the targeted underlying lending pool
+     * @param amount amount of aWETH to withdraw and receive native ETH
+     * @param to address of the user who will receive native ETH
+     */
+    function withdrawETH(
+        address lendingPool,
+        uint256 amount,
+        address to
+    ) external;
 
+    function repayETH(
+        address lendingPool,
+        uint256 amount,
+        uint256 rateMode,
+        address onBehalfOf
+    ) external payable;
 
-  function repayETH(
-    address lendingPool,
-    uint256 amount,
-    uint256 rateMode,
-    address onBehalfOf
-  ) external payable;
+    function borrowETH(
+        address lendingPool,
+        uint256 amount,
+        uint256 interesRateMode,
+        uint16 referralCode
+    ) external;
 
-  function borrowETH(
-    address lendingPool,
-    uint256 amount,
-    uint256 interesRateMode,
-    uint16 referralCode
-  ) external;
+    /**
+     * @dev Get WETH address used by WETHGateway
+     */
+    function getWETHAddress() external view returns (address);
+}
 
-  /**
-   * @dev Get WETH address used by WETHGateway
-   */
-  function getWETHAddress() external view returns (address);
+interface PriceOracle {
+    function getAssetPrice(address _asset) external view returns (uint256);
+}
 
-
+interface AaveProtocolDataProvider {
+    function getUserReserveData(address asset, address user)
+        external
+        view
+        returns (
+            uint256 currentATokenBalance,
+            uint256 currentStableDebt,
+            uint256 currentVariableDebt,
+            uint256 principalStableDebt,
+            uint256 scaledVariableDebt,
+            uint256 stableBorrowRate,
+            uint256 liquidityRate,
+            uint40 stableRateLastUpdated,
+            bool usageAsCollateralEnabled
+        );
 }
