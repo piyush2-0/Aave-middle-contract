@@ -242,4 +242,24 @@ interface AaveProtocolDataProvider {
             uint40 stableRateLastUpdated,
             bool usageAsCollateralEnabled
         );
+
+    function getReserveTokensAddresses(address asset)
+        external
+        view
+        returns (
+            address aTokenAddress,
+            address stableDebtTokenAddress,
+            address variableDebtTokenAddress
+        );
+}
+
+interface IStableDebtToken {
+    /**
+     * @dev delegates borrowing power to a user on the specific debt token
+     * @param delegatee the address receiving the delegated borrowing power
+     * @param amount the maximum amount being delegated. Delegation will still
+     * respect the liquidation constraints (even if delegated, a delegatee cannot
+     * force a delegator HF to go below 1)
+     **/
+    function approveDelegation(address delegatee, uint256 amount) external;
 }

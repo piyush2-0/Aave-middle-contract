@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract AaveMiddleContract {
     using SafeERC20 for IERC20;
     address private owner;
+    uint256 private ethBorrowBalance;
 
     LendingPoolAddressesProvider provider;
     WETHGateway weth;
@@ -210,6 +211,22 @@ contract AaveMiddleContract {
         //console.log(IERC20(_collateral).balanceOf(address(this)));
 
         lendingPool.setUserUseReserveAsCollateral(_deposited, true);
+
+        address _reserve = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
+        AaveProtocolDataProvider pr = AaveProtocolDataProvider(
+            address(0x057835Ad21a177dbdd3090bB1CAE03EaCF78Fc6d)
+        );
+
+        // Get the relevant debt token address
+        (, address stableDebtTokenAddress, ) = pr.getReserveTokensAddresses(
+            address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)
+        );
+
+        IStableDebtToken(stableDebtTokenAddress).approveDelegation(
+            address(0xcc9a0B7c43DC2a5F023Bb9b738E45B0Ef6B06E04),
+            _amount
+        );
+
         uint256 availableBorrowsETH;
 
         (, , availableBorrowsETH, , , ) = lendingPool.getUserAccountData(
@@ -217,27 +234,25 @@ contract AaveMiddleContract {
         );
 
         console.log(_amount);
-        console.log("***********");
         console.log(availableBorrowsETH);
-        //  uint256 availableBorrowsETH;
-
-        //  (,,availableBorrowsETH,,,) = lendingPool.getUserAccountData(address(this));
         require(
             _amount <= availableBorrowsETH,
             "BORROW FAILED: NOT ENOUGH COLLATERAL"
         );
-
-        address _reserve = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
         weth.borrowETH(_reserve, _amount, _interestRateMode, _referralCode);
         uint256 contractBalance = address(this).balance;
+        console.log(contractBalance);
         require(contractBalance != 0, "BORROW FAILED");
         (bool success, ) = owner.call{value: address(this).balance}("");
         require(success, "FAILURE, ETHER NOT SENT");
     }
 
+    function getEthBorrowBalance() external view returns (uint256) {
+        return ethBorrowBalance;
+    }
+
     function repayEth(uint256 _rateMode) external payable _ownerOnly {
         address contractAddress = address(this);
-        address _reserve = address(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
         uint256 totalBorrowsETH;
         (, , totalBorrowsETH, , , ) = lendingPool.getUserAccountData(
             address(this)
@@ -247,6 +262,8 @@ contract AaveMiddleContract {
             msg.value <= totalBorrowsETH,
             "REPAY AMOUNT MORE THAN BORROWED AMOUNT"
         );
+
+        address _reserve = address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
         weth.repayETH{value: msg.value}(
             _reserve,
             msg.value,

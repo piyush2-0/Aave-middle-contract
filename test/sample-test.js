@@ -243,42 +243,45 @@ describe("Aave Middle Contract Test", function () {
 
     it("Should borrow ETH", async () => {
       await expect(() =>
-        middleContract.depositERC20(daiAddress, parseUnits("3", 18), 0)
-      ).to.changeTokenBalance(Dai, aDai, parseUnits("3", 18));
+        middleContract.depositERC20(daiAddress, 100000000, 0)
+      ).to.changeTokenBalance(Dai, aDai, 100000000);
 
       await expect(
-        await middleContract.borrowEth(1000, 1, 0, aDaiAddress, daiAddress)
-      ).to.changeEtherBalances([owner], 1000);
+        await middleContract.borrowEth(1, 1, 0, aDaiAddress, daiAddress)
+      ).to.changeEtherBalances([owner], [parseEther("0.000000000000000001")]);
     });
   });
 
-  //  describe('Repay Ether', async () => {
-  //             let Dai;
-  //             beforeEach(async () => {
+  describe("Repay Ether", async () => {
+    let Dai, aDai;
+    beforeEach(async () => {
+      const tokenArtifact = await artifacts.readArtifact("IERC20");
+      Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
+      await Dai.connect(owner).approve(
+        middleContract.address,
+        parseUnits("1", 18)
+      );
+      aDai = new ethers.Contract(aDaiAddress, aDaiAbi, ethers.provider);
 
-  //                 const tokenArtifact = await artifacts.readArtifact("IERC20");
-  //                 Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
-  //                 await Dai.connect(owner).approve(middleContract.address, parseUnits("1", 18));
-  //                 cDai = new ethers.Contract(aDaiAddress, aDaiAbi, ethers.provider);
+      await middleContract.depositERC20(daiAddress, 100000000, 0);
 
-  //                 await middleContract.depositERC20(daiAddress,1000000000,0);
+      await middleContract.borrowEth(1, 1, 0, aDaiAddress, daiAddress);
+    });
 
-  //                 await middleContract.borrowEth(0.0001,1,0,aDaiAddress,daiAddress);
+    it("Should fail on attempting to repay more than borrowed amount", async () => {
+      await expect(
+        middleContract.repayEth(1, {
+          value: parseEther("100"),
+        })
+      ).to.be.revertedWith("REPAY AMOUNT MORE THAN BORROWED AMOUNT");
+    });
 
-  //             });
+    it("Should repay debt and update borrowBalanceCurrent", async () => {
+      await middleContract.repayEth(1, {
+        value: 1,
+      });
 
-  //             it('Should fail on attempting to repay more than borrowed', async () => {
-  //                 await expect(middleContract.repayEth(1, {
-  //                     value: parseEther('10000000000')
-  //                 })).to.be.revertedWith("REPAY AMOUNT MORE THAN BORROWED AMOUNT");
-  //             })
-
-  //             it('Should repay amount and update borrowBalanceCurrent', async () => {
-  //                 await middleContract.repayEth(1,{
-  //                     value: parseEther('0.000100000001180074')
-  //                 });
-
-  //                 await expect(await middleContract.getEthBorrowBalance()).to.eq(0);
-  //             })
-  //         })
+      await expect(await middleContract.getEthBorrowBalance()).to.eq(0);
+    });
+  });
 });
