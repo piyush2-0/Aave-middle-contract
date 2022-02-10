@@ -15,6 +15,7 @@ describe("Aave Middle Contract Test", function () {
     );
     [owner] = await ethers.getSigners();
     middleContract = await middleContractFactory.deploy();
+    await middleContract.initialize();
   });
 
   describe("Deploy the contract", async () => {
@@ -26,7 +27,7 @@ describe("Aave Middle Contract Test", function () {
   describe("Deposit ERC20", async () => {
     let Dai, aDai;
     beforeEach(async () => {
-      const tokenArtifact = await artifacts.readArtifact("IERC20");
+      const tokenArtifact = await artifacts.readArtifact("IERC20Upgradeable");
       Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
       await Dai.connect(owner).approve(
         middleContract.address,
@@ -50,7 +51,7 @@ describe("Aave Middle Contract Test", function () {
   describe("Withdraw ERC20", async () => {
     let Dai, aDai;
     beforeEach(async () => {
-      const tokenArtifact = await artifacts.readArtifact("IERC20");
+      const tokenArtifact = await artifacts.readArtifact("IERC20Upgradeable");
       Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
       await Dai.connect(owner).approve(
         middleContract.address,
@@ -81,7 +82,7 @@ describe("Aave Middle Contract Test", function () {
   describe("Borrow ERC20", async () => {
     let Dai, aDai;
     beforeEach(async () => {
-      const tokenArtifact = await artifacts.readArtifact("IERC20");
+      const tokenArtifact = await artifacts.readArtifact("IERC20Upgradeable");
       Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
       await Dai.connect(owner).approve(
         middleContract.address,
@@ -126,7 +127,7 @@ describe("Aave Middle Contract Test", function () {
   describe("Repay ERC20", async () => {
     let Dai, aDai;
     beforeEach(async () => {
-      const tokenArtifact = await artifacts.readArtifact("IERC20");
+      const tokenArtifact = await artifacts.readArtifact("IERC20Upgradeable");
       Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
       await Dai.connect(owner).approve(
         middleContract.address,
@@ -203,7 +204,7 @@ describe("Aave Middle Contract Test", function () {
   describe("Borrow Ether", async () => {
     let Dai, aDai;
     beforeEach(async () => {
-      const tokenArtifact = await artifacts.readArtifact("IERC20");
+      const tokenArtifact = await artifacts.readArtifact("IERC20Upgradeable");
       Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
       await Dai.connect(owner).approve(
         middleContract.address,
@@ -255,7 +256,7 @@ describe("Aave Middle Contract Test", function () {
   describe("Repay Ether", async () => {
     let Dai, aDai;
     beforeEach(async () => {
-      const tokenArtifact = await artifacts.readArtifact("IERC20");
+      const tokenArtifact = await artifacts.readArtifact("IERC20Upgradeable");
       Dai = new ethers.Contract(daiAddress, tokenArtifact.abi, ethers.provider);
       await Dai.connect(owner).approve(
         middleContract.address,
