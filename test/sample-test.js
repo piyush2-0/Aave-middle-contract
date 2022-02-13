@@ -13,14 +13,20 @@ describe("Aave Middle Contract Test", function () {
     const middleContractFactory = await ethers.getContractFactory(
       "AaveMiddleContract"
     );
+    const proxyContractFactory = await ethers.getContractFactory(
+      "Proxy"
+    );
+    console.log(proxyContractFactory);
     [owner] = await ethers.getSigners();
     middleContract = await middleContractFactory.deploy();
-    await middleContract.initialize();
+    proxy = await proxyContractFactory.deploy();
+    await proxy.upgrade(middleContract);
+    await proxy.initialize();
   });
 
   describe("Deploy the contract", async () => {
     it("Should set the right owner", async () => {
-      expect(await middleContract.getOwner()).to.eq(owner.address);
+      expect(await proxy.getOwner()).to.eq(owner.address);
     });
   });
 
