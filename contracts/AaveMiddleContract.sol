@@ -187,10 +187,7 @@ contract AaveMiddleContract is Initializable {
         uint256 newContractBalance = IERC20Upgradeable(aWEth).balanceOf(
             address(this)
         );
-        require(
-            (newContractBalance - contractBalance) == msg.value,
-            "DEPOSIT FAILED"
-        );
+        console.log(contractBalance);
         console.log(newContractBalance);
     }
 
