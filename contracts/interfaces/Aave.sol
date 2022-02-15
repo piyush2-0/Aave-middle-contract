@@ -147,6 +147,18 @@ interface LendingPool {
 
     function setUserUseReserveAsCollateral(address asset, bool useAsCollateral)
         external;
+
+    function getUserAccountData(address user)
+        external
+        view
+        returns (
+            uint256 totalCollateralETH,
+            uint256 totalDebtETH,
+            uint256 availableBorrowsETH,
+            uint256 currentLiquidationThreshold,
+            uint256 ltv,
+            uint256 healthFactor
+        );
 }
 
 interface LendingPoolAddressesProvider {
@@ -161,4 +173,93 @@ interface LendingPoolAddressesProvider {
      * @return the lending LendingPool core proxy address
      */
     function getLendingPoolCore() external view returns (address payable);
+
+    function getPriceOracle() external view returns (address);
+}
+
+interface WETHGateway {
+    /**
+     * @dev deposits WETH into the reserve, using native ETH. A corresponding amount of the overlying asset (aTokens)
+     * is minted.
+     * @param lendingPool address of the targeted underlying lending pool
+     * @param onBehalfOf address of the user who will receive the aTokens representing the deposit
+     * @param referralCode integrators are assigned a referral code and can potentially receive rewards.
+     **/
+    function depositETH(
+        address lendingPool,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external payable;
+
+    /**
+     * @dev withdraws the WETH _reserves of msg.sender.
+     * @param lendingPool address of the targeted underlying lending pool
+     * @param amount amount of aWETH to withdraw and receive native ETH
+     * @param to address of the user who will receive native ETH
+     */
+    function withdrawETH(
+        address lendingPool,
+        uint256 amount,
+        address to
+    ) external;
+
+    function repayETH(
+        address lendingPool,
+        uint256 amount,
+        uint256 rateMode,
+        address onBehalfOf
+    ) external payable;
+
+    function borrowETH(
+        address lendingPool,
+        uint256 amount,
+        uint256 interesRateMode,
+        uint16 referralCode
+    ) external;
+
+    /**
+     * @dev Get WETH address used by WETHGateway
+     */
+    function getWETHAddress() external view returns (address);
+}
+
+interface PriceOracle {
+    function getAssetPrice(address _asset) external view returns (uint256);
+}
+
+interface AaveProtocolDataProvider {
+    function getUserReserveData(address asset, address user)
+        external
+        view
+        returns (
+            uint256 currentATokenBalance,
+            uint256 currentStableDebt,
+            uint256 currentVariableDebt,
+            uint256 principalStableDebt,
+            uint256 scaledVariableDebt,
+            uint256 stableBorrowRate,
+            uint256 liquidityRate,
+            uint40 stableRateLastUpdated,
+            bool usageAsCollateralEnabled
+        );
+
+    function getReserveTokensAddresses(address asset)
+        external
+        view
+        returns (
+            address aTokenAddress,
+            address stableDebtTokenAddress,
+            address variableDebtTokenAddress
+        );
+}
+
+interface IStableDebtToken {
+    /**
+     * @dev delegates borrowing power to a user on the specific debt token
+     * @param delegatee the address receiving the delegated borrowing power
+     * @param amount the maximum amount being delegated. Delegation will still
+     * respect the liquidation constraints (even if delegated, a delegatee cannot
+     * force a delegator HF to go below 1)
+     **/
+    function approveDelegation(address delegatee, uint256 amount) external;
 }
